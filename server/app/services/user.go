@@ -15,8 +15,11 @@ type UserService interface {
 	Register(u *models.UserRegisterReq) error
 	Login(u *models.UserLoginReq) (models.UserLoginResp, error)
 	List(u *models.UserReq) (models.UserListResp, error)
-	//Update(u *models.User) error
-	//applyFilters(db *gorm.DB, u *models.UserReq)
+	Update(u *models.User) error
+	findUserByCredential(credential string, userData *models.UserResp) error
+	matchRegexp(pattern, value string) bool
+	encryption(userData *models.UserResp)
+	applyFilters(db *gorm.DB, u *models.UserReq)
 }
 
 type UserServiceImpl struct {
@@ -122,7 +125,40 @@ func (UserServiceImpl) List(uReq *models.UserReq) (models.UserListResp, error) {
 
 	applyFilters(db, uReq)
 
+	if err := db.Count(&userListResp.Total).Error; err != nil {
+		return userListResp, errors.New("查询失败")
+	}
+
+	if err := db.Preload(clause.Associations).Find(&userListResp.Records).Error; err != nil {
+		return userListResp, errors.New("查询失败")
+	}
+
 	return userListResp, nil
+}
+
+func (UserServiceImpl) Update(u *models.User) error {
+	if u.Password != "" {
+		u.Password = utils.MD5(u.Password)
+	}
+
+	if u.Status == StatusDeleted {
+		var user models.User
+
+		err := database.GetMySQL().Model(&models.User{}).First(&user, user.ID).Error
+		if err != nil {
+			return errors.New("用户不存在")
+		}
+
+		u.Username = user.Username + "_del"
+		u.Nickname = user.Nickname + "_del"
+	}
+
+	err := database.GetMySQL().Model(&models.User{}).Updates(u).Error
+	if err != nil {
+		return errors.New("更新失败")
+	}
+
+	return nil
 }
 
 // 将正则表达式匹配和数据库查询逻辑提取到一个单独的函数
@@ -144,6 +180,7 @@ func findUserByCredential(credential string, userData *models.UserResp) error {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return errors.New("用户不存在")
 	}
+
 	return err
 }
 
@@ -158,8 +195,41 @@ func encryption(userData *models.UserResp) {
 	userData.Password = "*******"
 }
 
+// 查询条件过滤
 func applyFilters(db *gorm.DB, u *models.UserReq) {
 	if u.ID != 0 {
 		db.Where("id = ?", u.ID)
+	}
+
+	if u.RoleID != 0 {
+		db.Where("role_id = ?", u.RoleID)
+	}
+
+	if u.Username != "" {
+		db.Where("username LIKE ?", "%"+u.Username+"%")
+	}
+
+	if u.Nickname != "" {
+		db.Where("nickname LIKE ?", "%"+u.Nickname+"%")
+	}
+
+	if u.Email != "" {
+		db.Where("email = ?", u.Email)
+	}
+
+	if u.Phone != "" {
+		db.Where("phone = ?", u.Phone)
+	}
+
+	if u.Status != 0 {
+		db.Where("status = ?", u.Status)
+	}
+
+	if len(u.DateRange) == 2 && !u.DateRange[0].IsZero() && !u.DateRange[1].IsZero() {
+		db = db.Where("created_at >= ? AND created_at <= ?", u.DateRange[0], u.DateRange[1])
+	}
+
+	if u.Pagination.Page > 0 && u.Pagination.PageSize > 0 {
+		db.Scopes(utils.Paginate(&u.Pagination))
 	}
 }

@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"edu-profit/app/controllers"
+	"edu-profit/app/middlewares/cors"
 	"edu-profit/app/middlewares/jwt"
 	"github.com/gin-gonic/gin"
 )
@@ -10,7 +12,7 @@ func InitRouter() *gin.Engine {
 
 	r.Static("/static", "./static")
 
-	r.Use(cos.Cors())
+	r.Use(cors.Cors())
 
 	root := r.Group("/api")
 	{
