@@ -1,6 +1,6 @@
-CREATE DATABASE IF NOT EXISTS 'edu-platform' DEFAULT CHARACTER SET utf8m4 COLLATE utf8mb3_general_ci;
+CREATE DATABASE IF NOT EXISTS `edu-platform` DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
 
-USE 'edu-platform';
+USE `edu-platform`;
 
 DROP TABLE IF EXISTS `user`;
 CREATE TABLE IF NOT EXISTS `user` (
