@@ -40,7 +40,7 @@ type UserResp struct {
 	ID        int64        `json:"id"`                                              // 主键ID
 	RoleID    int          `json:"roleId"`                                          // 角色ID
 	Username  string       `json:"username"`                                        // 用户名
-	Password  string       `json:"password"`                                        // 密码
+	Password  string       `json:"-"`                                               // 密码
 	Nickname  string       `json:"nickname"`                                        // 昵称
 	Email     string       `json:"email"`                                           // 邮箱
 	Phone     string       `json:"phone"`                                           // 手机号

@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm/clause"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 type UserService interface {
@@ -103,8 +104,6 @@ func (UserServiceImpl) Login(uReq *models.UserLoginReq) (models.UserLoginResp, e
 		return models.UserLoginResp{}, errors.New("生成token失败: " + err.Error())
 	}
 
-	encryption(&userData)
-
 	loginResp := models.UserLoginResp{
 		Token: token,
 		User:  userData,
@@ -190,11 +189,6 @@ func matchRegexp(pattern, value string) bool {
 	return matched
 }
 
-// 数据加密
-func encryption(userData *models.UserResp) {
-	userData.Password = "*******"
-}
-
 // 查询条件过滤
 func applyFilters(db *gorm.DB, u *models.UserReq) {
 	if u.ID != 0 {
@@ -232,4 +226,18 @@ func applyFilters(db *gorm.DB, u *models.UserReq) {
 	if u.Pagination.Page > 0 && u.Pagination.PageSize > 0 {
 		db.Scopes(utils.Paginate(&u.Pagination))
 	}
+}
+
+type Option func(*options)
+
+type options struct {
+	ID         int64
+	RoleID     int
+	Username   string
+	Nickname   string
+	Email      string
+	Phone      string
+	Status     int
+	DateRange  []time.Time
+	Pagination utils.Pagination
 }
