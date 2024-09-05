@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm/clause"
 	"regexp"
 	"strconv"
-	"time"
 )
 
 type UserService interface {
@@ -19,8 +18,6 @@ type UserService interface {
 	Update(u *models.User) error
 	findUserByCredential(credential string, userData *models.UserResp) error
 	matchRegexp(pattern, value string) bool
-	encryption(userData *models.UserResp)
-	applyFilters(db *gorm.DB, u *models.UserReq)
 }
 
 type UserServiceImpl struct {
@@ -38,27 +35,27 @@ const (
 	RegexpForUsername = "/^[\\w-]{4,16}$/"
 )
 
-func (UserServiceImpl) Register(uReq *models.UserRegisterReq) error {
+func (UserServiceImpl) Register(req *models.UserRegisterReq) error {
 
 	var userData models.User
 
 	// 检查用户名重复
-	row := database.GetMySQL().Model(&models.User{}).Where("username = ? AND status != ?", uReq.Username, StatusDeleted).First(&userData).RowsAffected
+	row := database.GetMySQL().Model(&models.User{}).Where("username = ? AND status != ?", req.Username, StatusDeleted).First(&userData).RowsAffected
 	if row > 0 {
 		return errors.New("用户名已存在")
 	}
 
 	// 检查昵称重复
-	row = database.GetMySQL().Model(&models.User{}).Where("nickname = ? AND status != ?", uReq.Username, StatusDeleted).First(&userData).RowsAffected
+	row = database.GetMySQL().Model(&models.User{}).Where("nickname = ? AND status != ?", req.Username, StatusDeleted).First(&userData).RowsAffected
 	if row > 0 {
 		return errors.New("昵称已存在")
 	}
 
 	user := &models.User{
 		ID:       (&utils.Snowflake{}).NextVal(),
-		Username: uReq.Username,
-		Password: utils.MD5(uReq.Password),
-		Nickname: uReq.Nickname,
+		Username: req.Username,
+		Password: utils.MD5(req.Password),
+		Nickname: req.Nickname,
 		Status:   StatusNormal,
 	}
 
@@ -66,17 +63,17 @@ func (UserServiceImpl) Register(uReq *models.UserRegisterReq) error {
 
 }
 
-func (UserServiceImpl) Login(uReq *models.UserLoginReq) (models.UserLoginResp, error) {
+func (UserServiceImpl) Login(req *models.UserLoginReq) (models.UserLoginResp, error) {
 
 	var userData models.UserResp
 
-	switch uReq.Type {
+	switch req.Type {
 	case 1: // 用户名/手机号/邮箱 + 密码
-		if err := findUserByCredential(uReq.Username, &userData); err != nil {
+		if err := findUserByCredential(req.Username, &userData); err != nil {
 			return models.UserLoginResp{}, err
 		}
 
-		if userData.Password != utils.MD5(uReq.Password) {
+		if userData.Password != utils.MD5(req.Password) {
 			return models.UserLoginResp{}, errors.New("用户名或密码错误")
 		}
 		break
@@ -112,17 +109,29 @@ func (UserServiceImpl) Login(uReq *models.UserLoginReq) (models.UserLoginResp, e
 	return loginResp, nil
 }
 
-func (UserServiceImpl) List(uReq *models.UserReq) (models.UserListResp, error) {
+func (UserServiceImpl) List(req *models.UserReq) (models.UserListResp, error) {
 
 	var userListResp models.UserListResp
 
-	if uReq.IDStr != "" {
-		uReq.ID, _ = strconv.ParseInt(uReq.IDStr, 10, 64)
+	if req.IDStr != "" {
+		req.ID, _ = strconv.ParseInt(req.IDStr, 10, 64)
 	}
 
-	db := database.GetMySQL().Model(&models.User{}).Order(uReq.OrderBy + " " + uReq.Sorted)
+	db := database.GetMySQL().Model(&models.User{}).Order(req.OrderBy + " " + req.Sorted)
 
-	applyFilters(db, uReq)
+	filters := []QueryOption{
+		WithID(req.ID),
+		WithRoleID(req.RoleID),
+		WithUsername(req.Username),
+		WithNickname(req.Nickname),
+		WithEmail(req.Email),
+		WithPhone(req.Phone),
+		WithStatus(req.Status),
+		WithDateRange(req.DateRange),
+		WithPagination(req.Pagination),
+	}
+
+	ApplyFilters(db, filters...)
 
 	if err := db.Count(&userListResp.Total).Error; err != nil {
 		return userListResp, errors.New("查询失败")
@@ -187,57 +196,4 @@ func findUserByCredential(credential string, userData *models.UserResp) error {
 func matchRegexp(pattern, value string) bool {
 	matched, _ := regexp.MatchString(pattern, value)
 	return matched
-}
-
-// 查询条件过滤
-func applyFilters(db *gorm.DB, u *models.UserReq) {
-	if u.ID != 0 {
-		db.Where("id = ?", u.ID)
-	}
-
-	if u.RoleID != 0 {
-		db.Where("role_id = ?", u.RoleID)
-	}
-
-	if u.Username != "" {
-		db.Where("username LIKE ?", "%"+u.Username+"%")
-	}
-
-	if u.Nickname != "" {
-		db.Where("nickname LIKE ?", "%"+u.Nickname+"%")
-	}
-
-	if u.Email != "" {
-		db.Where("email = ?", u.Email)
-	}
-
-	if u.Phone != "" {
-		db.Where("phone = ?", u.Phone)
-	}
-
-	if u.Status != 0 {
-		db.Where("status = ?", u.Status)
-	}
-
-	if len(u.DateRange) == 2 && !u.DateRange[0].IsZero() && !u.DateRange[1].IsZero() {
-		db = db.Where("created_at >= ? AND created_at <= ?", u.DateRange[0], u.DateRange[1])
-	}
-
-	if u.Pagination.Page > 0 && u.Pagination.PageSize > 0 {
-		db.Scopes(utils.Paginate(&u.Pagination))
-	}
-}
-
-type Option func(*options)
-
-type options struct {
-	ID         int64
-	RoleID     int
-	Username   string
-	Nickname   string
-	Email      string
-	Phone      string
-	Status     int
-	DateRange  []time.Time
-	Pagination utils.Pagination
 }
