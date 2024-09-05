@@ -1,12 +1,19 @@
 package services
 
 import (
+	"edu-profit/app/types"
 	"edu-profit/utils"
 	"gorm.io/gorm"
 	"time"
 )
 
 type QueryOption func(*gorm.DB)
+
+func ApplyFilters(db *gorm.DB, opts ...QueryOption) {
+	for _, opt := range opts {
+		opt(db) // 调用每个过滤器，应用到db上
+	}
+}
 
 func WithID(id int64) QueryOption {
 	return func(db *gorm.DB) {
@@ -56,7 +63,7 @@ func WithPhone(phone string) QueryOption {
 	}
 }
 
-func WithStatus(status int) QueryOption {
+func WithStatus(status types.StatusType) QueryOption {
 	return func(db *gorm.DB) {
 		if status != 0 {
 			db.Where("status = ?", status)
@@ -82,11 +89,5 @@ func WithPagination(pagination utils.Pagination) QueryOption {
 		if pagination.Page > 0 && pagination.PageSize > 0 {
 			db.Scopes(utils.Paginate(&pagination))
 		}
-	}
-}
-
-func ApplyFilters(db *gorm.DB, opts ...QueryOption) {
-	for _, opt := range opts {
-		opt(db) // 调用每个过滤器，应用到db上
 	}
 }

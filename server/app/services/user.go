@@ -2,6 +2,7 @@ package services
 
 import (
 	"edu-profit/app/models"
+	"edu-profit/app/types"
 	"edu-profit/database"
 	"edu-profit/utils"
 	"errors"
@@ -24,12 +25,6 @@ type UserServiceImpl struct {
 }
 
 const (
-	StatusNormal int = 1 + iota
-	StatusFrozen
-	StatusDeleted
-)
-
-const (
 	RegexpForPhone    = "/^(?:(?:\\+|00)86)?1(?:(?:3[\\d])|(?:4[5-79])|(?:5[0-35-9])|(?:6[5-7])|(?:7[0-8])|(?:8[\\d])|(?:9[1589]))\\d{8}$/"
 	RegexpForEmail    = "/^(([^<>()[\\]\\\\.,;:\\s@\"]+(\\.[^<>()[\\]\\\\.,;:\\s@\"]+)*)|(\".+\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$/"
 	RegexpForUsername = "/^[\\w-]{4,16}$/"
@@ -40,13 +35,13 @@ func (UserServiceImpl) Register(req *models.UserRegisterReq) error {
 	var userData models.User
 
 	// 检查用户名重复
-	row := database.GetMySQL().Model(&models.User{}).Where("username = ? AND status != ?", req.Username, StatusDeleted).First(&userData).RowsAffected
+	row := database.GetMySQL().Model(&models.User{}).Where("username = ? AND status != ?", req.Username, types.StatusDeleted).First(&userData).RowsAffected
 	if row > 0 {
 		return errors.New("用户名已存在")
 	}
 
 	// 检查昵称重复
-	row = database.GetMySQL().Model(&models.User{}).Where("nickname = ? AND status != ?", req.Username, StatusDeleted).First(&userData).RowsAffected
+	row = database.GetMySQL().Model(&models.User{}).Where("nickname = ? AND status != ?", req.Username, types.StatusDeleted).First(&userData).RowsAffected
 	if row > 0 {
 		return errors.New("昵称已存在")
 	}
@@ -56,7 +51,7 @@ func (UserServiceImpl) Register(req *models.UserRegisterReq) error {
 		Username: req.Username,
 		Password: utils.MD5(req.Password),
 		Nickname: req.Nickname,
-		Status:   StatusNormal,
+		Status:   types.StatusNormal,
 	}
 
 	return database.GetMySQL().Create(user).Error
@@ -88,11 +83,11 @@ func (UserServiceImpl) Login(req *models.UserLoginReq) (models.UserLoginResp, er
 		return models.UserLoginResp{}, errors.New("缺少参数")
 	}
 
-	if userData.Status == StatusFrozen {
+	if userData.Status == types.StatusFrozen {
 		return models.UserLoginResp{}, errors.New("用户已冻结")
 	}
 
-	if userData.Status == StatusDeleted {
+	if userData.Status == types.StatusDeleted {
 		return models.UserLoginResp{}, errors.New("用户已注销")
 	}
 
@@ -149,7 +144,7 @@ func (UserServiceImpl) Update(u *models.User) error {
 		u.Password = utils.MD5(u.Password)
 	}
 
-	if u.Status == StatusDeleted {
+	if u.Status == types.StatusDeleted {
 		var user models.User
 
 		err := database.GetMySQL().Model(&models.User{}).First(&user, user.ID).Error
