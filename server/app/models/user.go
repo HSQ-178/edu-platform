@@ -11,6 +11,7 @@ type User struct {
 	RoleID    int              `json:"roleId"`                          // 角色ID
 	Username  string           `json:"username"`                        // 用户名
 	Password  string           `json:"password"`                        // 密码
+	Name      string           `json:"name"`                            // 姓名
 	Nickname  string           `json:"nickname"`                        // 昵称
 	Email     string           `json:"email" gorm:"default NULL"`       // 邮箱
 	Phone     string           `json:"phone" gorm:"default NULL"`       // 手机号
@@ -26,6 +27,7 @@ type UserReq struct {
 	RoleID     int              `json:"roleId"`    // 角色ID
 	Username   string           `json:"username"`  // 用户名
 	Password   string           `json:"password"`  // 密码
+	Name       string           `json:"name"`      // 姓名
 	Nickname   string           `json:"nickname"`  // 昵称
 	Email      string           `json:"email"`     // 邮箱
 	Phone      string           `json:"phone"`     // 手机号
@@ -42,6 +44,7 @@ type UserResp struct {
 	RoleID    int              `json:"roleId"`                                          // 角色ID
 	Username  string           `json:"username"`                                        // 用户名
 	Password  string           `json:"-"`                                               // 密码
+	Name      string           `json:"name"`                                            // 姓名
 	Nickname  string           `json:"nickname"`                                        // 昵称
 	Email     string           `json:"email"`                                           // 邮箱
 	Phone     string           `json:"phone"`                                           // 手机号

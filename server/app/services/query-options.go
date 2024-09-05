@@ -39,6 +39,14 @@ func WithUsername(username string) QueryOption {
 	}
 }
 
+func WithName(name string) QueryOption {
+	return func(db *gorm.DB) {
+		if name != "" {
+			db.Where("name Like ?", "%"+name+"%")
+		}
+	}
+}
+
 func WithNickname(nickname string) QueryOption {
 	return func(db *gorm.DB) {
 		if nickname != "" {

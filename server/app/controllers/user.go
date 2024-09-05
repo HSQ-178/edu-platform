@@ -68,6 +68,7 @@ func (UserController) List(c *gin.Context) {
 }
 
 func (UserController) Update(c *gin.Context) {
+
 	var userReq models.UserReq
 
 	err := c.ShouldBind(&userReq)

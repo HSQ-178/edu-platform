@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `role_id` INT(0) UNSIGNED NOT NULL COMMENT '角色ID',
     `username` VARCHAR(24) NOT NULL COMMENT '用户名',
     `password` VARCHAR(24) NOT NULL COMMENT '密码',
+    `name` VARCHAR(15) NOT NULL COMMENT '姓名',
     `nickname` VARCHAR(15) NOT NULL COMMENT '昵称',
     `email` VARCHAR(50) COMMENT '邮箱',
     `phone` VARCHAR(18) COMMENT '手机号',
