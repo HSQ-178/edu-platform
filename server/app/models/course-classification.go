@@ -2,6 +2,7 @@ package models
 
 import (
 	"edu-profit/app/types"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -12,6 +13,7 @@ type CourseClassification struct {
 	Status    types.StatusType `json:"status" gorm:"default 1"`         // 状态 1:启用 2:冻结 3:删除
 	CreatedAt time.Time        `json:"createdAt" gorm:"autoCreateTime"` // 创建时间
 	UpdatedAt time.Time        `json:"updatedAt" gorm:"autoUpdateTime"` // 更新时间
+	DeletedAt gorm.DeletedAt   `json:"-"`                               // 删除标记
 }
 
 type CourseClassificationReq struct {
@@ -29,6 +31,7 @@ type CourseClassificationResp struct {
 	Status    types.StatusType `json:"status"`    // 状态 1:启用 2:冻结 3:删除
 	CreatedAt time.Time        `json:"createdAt"` // 创建时间
 	UpdatedAt time.Time        `json:"updatedAt"` // 更新时间
+	DeletedAt gorm.DeletedAt   `json:"-"`         // 删除标记
 }
 
 type CourseClassificationListResp struct {

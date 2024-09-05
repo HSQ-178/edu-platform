@@ -15,7 +15,15 @@ func ApplyFilters(db *gorm.DB, opts ...QueryOption) {
 	}
 }
 
-func WithID(id int64) QueryOption {
+func WithID32(id int) QueryOption {
+	return func(db *gorm.DB) {
+		if id != 0 {
+			db.Where("id = ?", id)
+		}
+	}
+}
+
+func WithID64(id int64) QueryOption {
 	return func(db *gorm.DB) {
 		if id != 0 {
 			db.Where("id = ?", id)
@@ -96,6 +104,14 @@ func WithPagination(pagination utils.Pagination) QueryOption {
 	return func(db *gorm.DB) {
 		if pagination.Page > 0 && pagination.PageSize > 0 {
 			db.Scopes(utils.Paginate(&pagination))
+		}
+	}
+}
+
+func WithRoleName(roleName string) QueryOption {
+	return func(db *gorm.DB) {
+		if roleName != "" {
+			db.Where("role_name Like ?", roleName)
 		}
 	}
 }

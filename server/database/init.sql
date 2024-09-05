@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS `user_role`(
     `role_name` VARCHAR(10) NOT NULL COMMENT '角色名',
     `created_at` DATETIME NOT NULL COMMENT '创建时间',
     `updated_at` DATETIME NOT NULL COMMENT '更新时间',
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `idx_user_role_name` (`role_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT '用户角色表';
 
 DROP TABLE IF EXISTS `user_role_permission`;

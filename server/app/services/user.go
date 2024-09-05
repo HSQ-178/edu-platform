@@ -13,10 +13,11 @@ import (
 )
 
 type UserService interface {
-	Register(u *models.UserRegisterReq) error
-	Login(u *models.UserLoginReq) (models.UserLoginResp, error)
-	List(u *models.UserReq) (models.UserListResp, error)
-	Update(u *models.User) error
+	Register(req *models.UserRegisterReq) error
+	Login(req *models.UserLoginReq) (models.UserLoginResp, error)
+	List(req *models.UserReq) (models.UserListResp, error)
+	Update(req *models.User) error
+	Delete(req *[]models.User) error
 	findUserByCredential(credential string, userData *models.UserResp) error
 	matchRegexp(pattern, value string) bool
 }
@@ -105,7 +106,7 @@ func (UserServiceImpl) Login(req *models.UserLoginReq) (models.UserLoginResp, er
 
 func (UserServiceImpl) List(req *models.UserReq) (models.UserListResp, error) {
 
-	var userListResp models.UserListResp
+	var resp models.UserListResp
 
 	if req.IDStr != "" {
 		req.ID, _ = strconv.ParseInt(req.IDStr, 10, 64)
@@ -114,7 +115,7 @@ func (UserServiceImpl) List(req *models.UserReq) (models.UserListResp, error) {
 	db := database.GetMySQL().Model(&models.User{}).Order(req.OrderBy + " " + req.Sorted)
 
 	filters := []QueryOption{
-		WithID(req.ID),
+		WithID64(req.ID),
 		WithRoleID(req.RoleID),
 		WithUsername(req.Username),
 		WithName(req.Name),
@@ -128,23 +129,42 @@ func (UserServiceImpl) List(req *models.UserReq) (models.UserListResp, error) {
 
 	ApplyFilters(db, filters...)
 
-	if err := db.Count(&userListResp.Total).Error; err != nil {
-		return userListResp, errors.New("查询失败")
+	if err := db.Count(&resp.Total).Error; err != nil {
+		return resp, errors.New("查询失败")
 	}
 
-	if err := db.Preload(clause.Associations).Find(&userListResp.Records).Error; err != nil {
-		return userListResp, errors.New("查询失败")
+	if err := db.Preload(clause.Associations).Find(&resp.Records).Error; err != nil {
+		return resp, errors.New("查询失败")
 	}
 
-	return userListResp, nil
+	return resp, nil
 }
 
-func (UserServiceImpl) Update(u *models.User) error {
-	if u.Password != "" {
-		u.Password = utils.MD5(u.Password)
+func (UserServiceImpl) Update(req *[]models.User) error {
+
+	tx := database.GetMySQL().Begin()
+
+	for _, r := range *req {
+		if r.Password != "" {
+			r.Password = utils.MD5(r.Password)
+		}
+
+		if err := database.GetMySQL().Model(&models.User{}).Updates(r).Error; err != nil {
+			tx.Rollback()
+			return errors.New("部分数据存在异常，操作失败")
+		}
 	}
 
-	if u.Status == types.StatusDeleted {
+	tx.Commit()
+	return nil
+}
+
+func (UserServiceImpl) Delete(req *[]models.User) error {
+
+	tx := database.GetMySQL().Begin()
+
+	for _, r := range *req {
+
 		var user models.User
 
 		err := database.GetMySQL().Model(&models.User{}).First(&user, user.ID).Error
@@ -152,15 +172,22 @@ func (UserServiceImpl) Update(u *models.User) error {
 			return errors.New("用户不存在")
 		}
 
-		u.Username = user.Username + "_del"
-		u.Nickname = user.Nickname + "_del"
+		r.Username = user.Username + "_del"
+		r.Nickname = user.Nickname + "_del"
+		r.Status = types.StatusDeleted
+
+		if err := database.GetMySQL().Model(&models.User{}).Updates(r).Error; err != nil {
+			tx.Rollback()
+			return errors.New("部分数据存在异常，操作失败")
+		}
+
+		if err := database.GetMySQL().Delete(&r).Error; err != nil {
+			tx.Rollback()
+			return errors.New("部分数据存在异常，操作失败")
+		}
 	}
 
-	err := database.GetMySQL().Model(&models.User{}).Updates(u).Error
-	if err != nil {
-		return errors.New("更新失败")
-	}
-
+	tx.Commit()
 	return nil
 }
 
